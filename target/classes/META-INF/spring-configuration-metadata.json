@@ -1,0 +1,35 @@
+{
+  "groups": [
+    {
+      "name": "ollama.chat-model",
+      "type": "com.example.aiproject.ai.AIInitializer",
+      "sourceType": "com.example.aiproject.ai.AIInitializer"
+    }
+  ],
+  "properties": [
+    {
+      "name": "ollama.chat-model.endpoint",
+      "type": "java.lang.String",
+      "sourceType": "com.example.aiproject.ai.AIInitializer"
+    },
+    {
+      "name": "ollama.chat-model.log-enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.example.aiproject.ai.AIInitializer"
+    },
+    {
+      "name": "ollama.chat-model.model",
+      "type": "java.lang.String",
+      "sourceType": "com.example.aiproject.ai.AIInitializer"
+    },
+    {
+      "name": "ollama.chat-model.test-repo-root-path",
+      "type": "java.lang.String",
+      "sourceType": "com.example.aiproject.ai.AIInitializer"
+    }
+  ],
+  "hints": [],
+  "ignored": {
+    "properties": []
+  }
+}
