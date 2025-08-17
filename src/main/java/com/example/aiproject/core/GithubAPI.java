@@ -67,41 +67,63 @@ public class GithubAPI {
         }
     }
 
-    public List<dev.langchain4j.data.document.Document> getAllFileContents(String serverUrl, String token, String repositoryPath, String modulePath) {
+    public List<dev.langchain4j.data.document.Document> getAllFileContents(
+            String serverUrl,
+            String token,
+            String repositoryPath,
+            String modulePath
+    ) {
         Map<String, String> fileContents = new ConcurrentHashMap<>();
 
-        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        try (ExecutorService executor = Executors.newFixedThreadPool(10)) {
             GitHub gitHub = getGitHubApi(serverUrl, token, repositoryPath);
             GHRepository repository = gitHub.getRepository(repositoryPath);
-            String branch = getDefaultBranch(repositoryPath);
-            List<GHTreeEntry> treeEntries = repository.getTreeRecursive(branch,1).getTree();
 
-            List<Future<?>> futures = new ArrayList<>();
+            String branch = getDefaultBranch(repositoryPath);
+
+            List<GHTreeEntry> treeEntries = repository.getTreeRecursive(branch, Integer.MAX_VALUE).getTree();
+
+            List<Future<Void>> futures = new ArrayList<>();
+
             for (GHTreeEntry entry : treeEntries) {
-                if (entry.getType().equals("blob")) {
-                    String path=entry.getPath();
-                    if(!modulePath.isEmpty() && path.startsWith(modulePath)){
+                if ("blob".equals(entry.getType())) {
+                    String path = entry.getPath();
+
+                    if (!modulePath.isEmpty() && !path.startsWith(modulePath)) {
                         continue;
                     }
+
                     futures.add(executor.submit(() -> {
                         try {
-                            byte[] decoded = Base64.getDecoder().decode(entry.readAsBlob().readAllBytes());
-                            fileContents.put(entry.getPath(), new String(decoded, StandardCharsets.UTF_8));
+                            GHContent file = repository.getFileContent(path, branch);
+                            String content = file.isFile() ? file.getContent() : "";
+
+                            fileContents.put(path, content);
                         } catch (Exception e) {
                             log.error("Error fetching file: {}. Details: ", path, e);
                         }
+                        return null;
                     }));
                 }
             }
-            for (Future<?> future : futures) {
+
+            for (Future<Void> future : futures) {
                 future.get();
             }
+
         } catch (Exception e) {
             log.error("Error fetching all file contents for repo path: {}. Details: ", repositoryPath, e);
             throw new RuntimeException(e);
         }
-        return fileContents.entrySet().stream().map(entry -> dev.langchain4j.data.document.Document.from((entry.getValue() == null || entry.getValue().isBlank()) ? "Blank" : entry.getValue(), new dev.langchain4j.data.document.Metadata(Map.of("fileName", entry.getKey())))).toList();
+
+        return fileContents.entrySet().stream()
+                .map(entry -> dev.langchain4j.data.document.Document.from(
+                        (entry.getValue() == null || entry.getValue().isBlank()) ? "Blank" : entry.getValue(),
+                        new dev.langchain4j.data.document.Metadata(Map.of("fileName", entry.getKey()))
+                ))
+                .toList();
     }
+
 
     public Map<String, Float> calculateRepositoryLanguagesFromLinesOfCode(Map<String, Integer> linesOfCode) {
         int totalLines = linesOfCode.values().stream().mapToInt(Integer::intValue).sum();
