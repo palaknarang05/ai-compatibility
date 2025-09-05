@@ -20,7 +20,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GHTreeEntry;
-import org.kohsuke.github.GHException;
 import org.kohsuke.github.GitHub;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -44,10 +43,7 @@ public class GithubAPI {
            try{
                if(serverUrl==null || serverUrl.isEmpty() || serverUrl.equals("https://github.com")){
                    return GitHub.connectUsingOAuth(token);
-
                }
-
-
            }
            catch (IOException e){
                throw new RuntimeException(e);
@@ -143,8 +139,7 @@ public class GithubAPI {
             String branch = getDefaultBranch(repositoryPath);
             String pomPath = modulePath.isEmpty() ? "pom.xml" : modulePath + "/pom.xml";
             GHContent file = repository.getFileContent(pomPath, branch);
-            byte[] decoded = Base64.getDecoder().decode(file.getContent());
-            String pomContent = new String(decoded, StandardCharsets.UTF_8);
+            String pomContent = file.isFile() ? file.getContent() : "";
             dev.langchain4j.data.document.Document doc = dev.langchain4j.data.document.Document.from(pomContent, new dev.langchain4j.data.document.Metadata(Map.of("fileName", "pom.xml")));
             return List.of(doc);
         } catch (IOException e) {
